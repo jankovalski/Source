@@ -7,7 +7,7 @@ class SwatGameInfo extends Engine.GameInfo
     dependsOn(SwatGUIConfig)
     native;
 
-//import enum eDifficultyLevel from SwatGame.SwatGUIConfig;
+import enum eDifficultyLevel from SwatGUIConfig;
 import enum EEntryType from SwatGame.SwatStartPointBase;
 import enum Pocket from Engine.HandheldEquipment;
 import enum EOfficerStartType from SwatGame.SwatOfficerStart;
@@ -1049,7 +1049,7 @@ function AddDefaultInventory(Pawn inPlayerPawn)
         if( Level.IsTraining )
         {
             LoadOut = Spawn(class'OfficerLoadOut', PlayerPawn, 'TrainingLoadOut');
-            LoadOutSpec = None;
+            LoadOutSpec = Spawn(class'DynamicLoadOutSpec', PlayerPawn, 'TrainingLoadOut');
         }
         else
         {

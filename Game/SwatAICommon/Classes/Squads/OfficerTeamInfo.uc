@@ -3,6 +3,7 @@
 // this is the base class of all squads for the Officer AI
 
 class OfficerTeamInfo extends AICommon.SquadInfo
+	implements Engine.ICareAboutGrenadesGoingOff
 	native;
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -43,10 +44,12 @@ protected function InitAbilities()
 	SquadAI.addAbility( new class'SquadBangAndClearAction' );
 	SquadAI.addAbility( new class'SquadGasAndClearAction' );
 	SquadAI.addAbility( new class'SquadStingAndClearAction' );
+	SquadAI.addAbility( new class'SquadLeaderThrowAndClearAction' );
 	SquadAI.addAbility( new class'SquadBreachAndClearAction' );
 	SquadAI.addAbility( new class'SquadBreachBangAndClearAction' );
 	SquadAI.addAbility( new class'SquadBreachGasAndClearAction' );
 	SquadAI.addAbility( new class'SquadBreachStingAndClearAction' );
+	SquadAI.addAbility( new class'SquadBreachLeaderThrowAndClearAction');
 	SquadAI.addAbility( new class'SquadDeployThrownItemAction' );
 	SquadAI.addAbility( new class'SquadExamineAndReportAction' );
 	SquadAI.addAbility( new class'SquadPickLockAction' );
@@ -435,6 +438,11 @@ event function bool CanBreachStingAndClear(bool bPlayerBelievesDoorLocked)
 	return (CanBreachAndClear(bPlayerBelievesDoorLocked) && DoesAnOfficerHaveUsableEquipment(Slot_StingGrenade));
 }
 
+event function bool CanBreachLeaderThrowAndClear(bool bPlayerBelievesDoorLocked)
+{
+	return CanBreachAndClear(bPlayerBelievesDoorLocked); // FIXME
+}
+
 event function bool CanBangAndClear()
 {
 	return DoesAnOfficerHaveUsableEquipment(Slot_Flashbang);
@@ -448,6 +456,11 @@ event function bool CanGasAndClear()
 event function bool CanStingAndClear()
 {
 	return DoesAnOfficerHaveUsableEquipment(Slot_StingGrenade);
+}
+
+event function bool CanLeaderThrowAndClear()
+{
+	return true; // FIXME
 }
 
 event function bool CanDeployThrownItem(EquipmentSlot ThrownItemEquipmentSlot)
@@ -910,6 +923,29 @@ function bool StingAndClear(Pawn CommandGiver, vector CommandOrigin, Door Target
 	return false;
 }
 
+function bool LeaderThrowAndClear(Pawn CommandGiver, vector CommandOrigin, Door TargetDoor) {
+	local SquadLeaderThrowAndClearGoal SquadGoal;
+
+	if (CanExecuteCommand()) {
+		if(!IsSubElement() || !IsOtherSubElementUsingDoor(TargetDoor)) {
+			if(CanLeaderThrowAndClear()) {
+				SquadGoal = new class'SquadLeaderThrowAndClearGoal'(AI_Resource(SquadAI), CommandGiver, CommandOrigin, TargetDoor);
+				assert(SquadGoal != None);
+
+				PostCommandGoal(SquadGoal);
+				return true;
+			} else {
+				// TODO trigger generic reply
+			}
+		} else {
+			TriggerOtherTeamDoingBehaviorSpeech();
+		}
+	}
+
+
+	return false;
+}
+
 // How Breach and Clear is supposed to work.
 
 // If the player believes the door is unlocked:
@@ -1143,6 +1179,36 @@ function bool BreachStingAndClear(Pawn CommandGiver, vector CommandOrigin, Door 
 	return false;
 }
 
+function bool BreachLeaderThrowAndClear(Pawn CommandGiver, vector CommandOrigin, Door TargetDoor, optional bool UseBreachingEquipment) {
+	local SquadBreachLeaderThrowAndClearGoal SquadGoal;
+
+	if(CanExecuteCommand()) {
+		if(!IsSubElement() || !IsOtherSubElementUsingDoor(TargetDoor)) {
+			if(UseBreachingEquipment) {
+				if(!CanBreachAndClearLockedDoor()) {
+					ISwatOfficer(GetFirstOfficer()).GetOfficerSpeechManagerAction().TriggerDoorBreachingEquipmentUnavailableSpeech();
+				} else {
+					SquadGoal = new class'SquadBreachLeaderThrowAndClearGoal'(AI_Resource(SquadAI), CommandGiver, CommandOrigin, TargetDoor, UseBreachingEquipment);
+					assert(SquadGoal != None);
+
+					PostCommandGoal(SquadGoal);
+					return true;
+				}
+			} else {
+				if(ISwatDoor(TargetDoor).IsLocked()) {
+					StackUpAndTryDoorAt(CommandGiver, CommandOrigin, TargetDoor, true);
+				} else {
+					LeaderThrowAndClear(CommandGiver, CommandOrigin, TargetDoor);
+				}
+				return true;
+			}
+		} else {
+			TriggerOtherTeamDoingBehaviorSpeech();
+		}
+	}
+	return false;
+}
+
 function bool DeployThrownItemAt(Pawn CommandGiver, vector CommandOrigin, EquipmentSlot ThrownItemSlot, vector TargetLocation, optional Door TargetDoor)
 {
 	local SquadDeployThrownItemGoal SquadDeployThrownItemGoal;
@@ -1247,6 +1313,7 @@ function bool PickLock(Pawn CommandGiver, vector CommandOrigin, Door TargetDoor)
 {
 	local SquadPickLockGoal SquadPickLockGoal;
 
+	log("PickLock()");
 	// only post the goal if we are allowed
 	if (CanExecuteCommand())
 	{
@@ -1264,6 +1331,7 @@ function bool PickLock(Pawn CommandGiver, vector CommandOrigin, Door TargetDoor)
 			else
 			{
 				// respond to not being able to pick a lock
+				assertWithDescription(false, "An officer didn't have a toolkit...! Best investigate this...");
 				ISwatOfficer(GetFirstOfficer()).GetOfficerSpeechManagerAction().TriggerToolkitUnavailableSpeech();
 			}
 		}
@@ -1272,7 +1340,7 @@ function bool PickLock(Pawn CommandGiver, vector CommandOrigin, Door TargetDoor)
 			TriggerOtherTeamDoingBehaviorSpeech();
 		}
 	}
-
+	log("Cannot execute picklock command");
 	return false;
 }
 
@@ -1824,6 +1892,36 @@ function bool DropLightstick(Pawn CommandGiver, vector CommandOrigin)
 		return true;
 	}
 	return false;
+}
+
+///////////////////////////////////////////////////////////////////////////////
+// Engine.ICareAboutGrenadesGoingOff implementation
+
+simulated function OnFlashbangWentOff(Pawn Thrower) {
+	local ICareAboutGrenadesGoingOff CastGoal;
+	log("Flashbang went off and CurrentSquadCommandGoal is " $CurrentSquadCommandGoal);
+	if(CurrentSquadCommandGoal.IsA('ICareAboutGrenadesGoingOff')) {
+		CastGoal = ICareAboutGrenadesGoingOff(CurrentSquadCommandGoal);
+		CastGoal.OnFlashbangWentOff(Thrower);
+	}
+}
+
+simulated function OnCSGasWentOff(Pawn Thrower) {
+	local ICareAboutGrenadesGoingOff CastGoal;
+  log("CS Gas went off and CurrentSquadCommandGoal is " $CurrentSquadCommandGoal);
+	if(CurrentSquadCommandGoal.IsA('ICareAboutGrenadesGoingOff')) {
+		CastGoal = ICareAboutGrenadesGoingOff(CurrentSquadCommandGoal);
+		CastGoal.OnCSGasWentOff(Thrower);
+	}
+}
+
+simulated function OnStingerWentOff(Pawn Thrower) {
+	local ICareAboutGrenadesGoingOff CastGoal;
+  log("Stinger went off and CurrentSquadCommandGoal is "$CurrentSquadCommandGoal);
+	if(CurrentSquadCommandGoal.IsA('ICareAboutGrenadesGoingOff')) {
+		CastGoal = ICareAboutGrenadesGoingOff(CurrentSquadCommandGoal);
+		CastGoal.OnStingerWentOff(Thrower);
+	}
 }
 
 ///////////////////////////////////////////////////////////////////////////////

@@ -554,6 +554,18 @@ struct ASwatAICharacter_eventReplicatedSkinsOnChanged_Parms
 struct ASwatAICharacter_eventReplicatedMeshInfoOnChanged_Parms
 {
 };
+// Constant HighSkillMaxTimeBeforeShooting is declared in "..\SwatGame\Classes\AI\SwatEnemy.uc"
+#define UCONST_HighSkillMaxTimeBeforeShooting 10
+// Constant HighSkillMinTimeBeforeShooting is declared in "..\SwatGame\Classes\AI\SwatEnemy.uc"
+#define UCONST_HighSkillMinTimeBeforeShooting 5
+// Constant MediumSkillMaxTimeBeforeShooting is declared in "..\SwatGame\Classes\AI\SwatEnemy.uc"
+#define UCONST_MediumSkillMaxTimeBeforeShooting 10
+// Constant MediumSkillMinTimeBeforeShooting is declared in "..\SwatGame\Classes\AI\SwatEnemy.uc"
+#define UCONST_MediumSkillMinTimeBeforeShooting 5
+// Constant LowSkillMaxTimeBeforeShooting is declared in "..\SwatGame\Classes\AI\SwatEnemy.uc"
+#define UCONST_LowSkillMaxTimeBeforeShooting 10
+// Constant LowSkillMinTimeBeforeShooting is declared in "..\SwatGame\Classes\AI\SwatEnemy.uc"
+#define UCONST_LowSkillMinTimeBeforeShooting 5
 // Constant maxWeaponDistance is declared in "..\SwatGame\Classes\AI\SwatEnemy.uc"
 #define UCONST_maxWeaponDistance 200.0f
 
@@ -753,8 +765,13 @@ enum ECommand
 	 Command_Response_Mirror =58,
 	 Command_StackUpMP       =59,
 	 Command_Preferences     =60,
-	 Command_Static          =61,
-	 Command_MAX             =62,
+	 Command_LeaderThrowAndClear=61,
+	 Command_BreachLeaderThrowAndClear=62,
+	 Command_BreachLeaderThrowAndMakeEntry=63,
+	 Command_OpenLeaderThrowAndClear=64,
+	 Command_OpenLeaderThrowAndMakeEntry=65,
+	 Command_Static          =66,
+	 Command_MAX             =67,
 };
 // Enum MenuPadStatus is declared in "..\SwatGame\Classes\PlayerInteraction\CommandInterface.uc"
 enum MenuPadStatus

@@ -3,26 +3,26 @@ class HandheldEquipment extends Equipment
     abstract
     native;
 
-var config int Range;   //the effective range of this equipment
+var(Firing) config int Range;   //the effective range of this equipment
 
-var config class<HandheldEquipmentModel> FirstPersonModelClass;
-var config class<HandheldEquipmentModel> ThirdPersonModelClass;
+var(Viewmodel) config class<HandheldEquipmentModel> FirstPersonModelClass;
+var(Viewmodel) config class<HandheldEquipmentModel> ThirdPersonModelClass;
 
 //if specified, these model classes will be used in multiplayer
-var config class<HandheldEquipmentModel> MPFirstPersonModelClass;
-var config class<HandheldEquipmentModel> MPThirdPersonModelClass;
+var(Viewmodel) config class<HandheldEquipmentModel> MPFirstPersonModelClass;
+var(Viewmodel) config class<HandheldEquipmentModel> MPThirdPersonModelClass;
 
-var config localized   String  Description;
-var config localized   String  FriendlyName;
-var config    Material GUIImage;
+var(GUI) config localized   String  Description;
+var(GUI) config localized   String  FriendlyName;
+var(GUI) config    Material GUIImage;
 
 var bool ShouldLowReady;
 
-var config float ZoomedFOV;				// FOV when zoomed in
-var config float ZoomTime;				// time it takes to zoom in
-var config Material ZoomBlurOverlay;	// 512x512 Material that is draw as an overlay when the item is zoomed in; set to None for no overlay
+var(Zoom) config float ZoomedFOV;				// FOV when zoomed in
+var(Zoom) config float ZoomTime;				// time it takes to zoom in
+var(Zoom) config Material ZoomBlurOverlay;	// 512x512 Material that is draw as an overlay when the item is zoomed in; set to None for no overlay
 
-var config name		LightstickThrowAnimPostfix	"Postfix appended to the third person lightstick throw animation when pawn is using this equipment.";
+var(Viewmodel) config name		LightstickThrowAnimPostfix	"Postfix appended to the third person lightstick throw animation when pawn is using this equipment.";
 
 
 enum EquipmentSlot
@@ -101,36 +101,36 @@ var protected ActionStatus UnequippingStatus;
 var protected ActionStatus UsingStatus;
 var protected ActionStatus MeleeingStatus;
 
-var config float EquipAnimationRate;
-var config float UnequipAnimationRate;
-var config float UseAnimationRate;
-var config float MeleeAnimationRate;
-var config bool InstantUnequip;
+var(Viewmodel) config float EquipAnimationRate;
+var(Viewmodel) config float UnequipAnimationRate;
+var(Viewmodel) config float UseAnimationRate;
+var(Viewmodel) config float MeleeAnimationRate;
+var(Viewmodel) config bool InstantUnequip;
 
 var bool		 bAbleToMelee;
 var bool		 MeleeAnimNotifierTriggered;
-var config float MeleeRange;
-var config float MeleeDamage;
-var config float MeleePlayerStingDuration;
-var config float MeleeHeavilyArmoredPlayerStingDuration;
-var config float MeleeNonArmoredPlayerStingDuration;
-var config float MeleeAIStingDuration;
+var(Melee) config float MeleeRange;
+var(Melee) config float MeleeDamage;
+var(Melee) config float MeleePlayerStingDuration;
+var(Melee) config float MeleeHeavilyArmoredPlayerStingDuration;
+var(Melee) config float MeleeNonArmoredPlayerStingDuration;
+var(Melee) config float MeleeAIStingDuration;
 
 var private bool Available;             //eg. not Thrown.  We don't remove items from LoadOut so that we have a record of them having been there.
 var bool UnavailableAfterUsed;          //if true, then Available is set to false after used
 var bool EquipOtherAfterUsed;           //if true, then a Holder should DoDefaultEquip() after this item is used.
                                         //  Note: if UnavailableAfterUsed is true, then EquipOtherAfterUsed is assumed!
 var bool PlayerCanUnequip;              //if false, then a player cannot simply unequip this piece of equipment.  Intended for the IAmCuffed HandheldEquipment.
-var config bool ShouldHaveFirstPersonModel;     //Most HandheldEquipment requires a valid FirstPersonModelClass.  But some (eg. IAmCuffed) don't... so this allows us to
+var(Viewmodel) config bool ShouldHaveFirstPersonModel;     //Most HandheldEquipment requires a valid FirstPersonModelClass.  But some (eg. IAmCuffed) don't... so this allows us to
                                                 //  not provide a FirstPersonModel, and at the same time assert that HHEquipment that should have a FirstPersonModel does.
-var config bool ShouldHaveThirdPersonModel;     //Most HandheldEquipment requires a valid ThirdPersonModelClass.  But some (eg. SniperRifle) don't... so this allows us to
+var(Viewmodel) config bool ShouldHaveThirdPersonModel;     //Most HandheldEquipment requires a valid ThirdPersonModelClass.  But some (eg. SniperRifle) don't... so this allows us to
                                                 //  not provide a ThirdPersonModel, and at the same time assert that HHEquipment that should have a ThirdPersonModel does.
 
 var float FramerateCompensationDelay;   //[see comments in DoEquipping()]
 
 var HandheldEquipmentPickup Pickup;
 
-var private config float RagdollDeathImpactMomentumMultiplier;
+var() private config float RagdollDeathImpactMomentumMultiplier;
 
 function PostBeginPlay()
 {
@@ -170,11 +170,6 @@ simulated function CreateModels()
             "[tcohen] The class "$class.name
             $" should have a valid FirstPersonModelClass, but it doesn't.  In SwatEquipment.ini, [SwatEquipment."$class.name
             $", please specify a valid FirstPersonModelClass, or set ShouldHaveFirstPersonModel=false.");
-    else
-        assertWithDescription(SelectedFirstPersonModelClass == None,
-            "[tcohen] The class "$class.name
-            $" should not have a valid FirstPersonModelClass, but it does.  In SwatEquipment.ini, [SwatEquipment."$class.name
-            $", please specify FirstPersonModelClass=None, or set ShouldHaveFirstPersonModel=true.");
 
     if (ShouldHaveFirstPersonModel && GetHands() != None )
     {
@@ -1262,7 +1257,6 @@ function AIInterrupt()
     else if (UnequippingStatus > ActionStatus_Idle) AIInterrupt_Unequipping();
     else if (UsingStatus > ActionStatus_Idle)       AIInterrupt_Using();
     else                                            AIInterruptHandheldEquipmentHook();
-
 	Pawn(Owner).AnimStopEquipment();
 }
 protected function AIInterruptHandheldEquipmentHook(); //for subclasses
@@ -1281,7 +1275,7 @@ protected function AIInterrupt_Unequipping()
 
 protected function AIInterrupt_Using()
 {
-    GotoState('');
+    //GotoState('');  // for some reason this line is causing crashes...sp00ky
     UsingStatus = ActionStatus_Idle;
 }
 

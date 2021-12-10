@@ -649,13 +649,29 @@ simulated function OnUnlocked()
     }
 }
 
+// FIXME: there might be more that's required to get this to work correctly..?
+simulated function OnDoorLockedByOperator() {
+	if(bIsLocked) {
+		// See above note about bIsLocked
+		return;
+	}
+
+	bIsLocked = true;
+	TriggerEffectEvent('Unlocked');
+
+	UpdateOfficerDoorKnowledge(true);
+
+	LockedKnowledge[0] = 1;
+	LockedKnowledge[1] = 1;
+	LockedKnowledge[2] = 1;
+}
+
 simulated function bool KnowsDoorIsLocked( int TeamNumber )
 {
     assert( Level.NetMode != NM_Standalone );
     assert( TeamNumber < 3 ); // dbeswick: used to be 2, now there are potentially 3 teams in coop
     return LockedKnowledge[TeamNumber] == 1;
 }
-
 
 //
 // Antiportal handling
@@ -1100,7 +1116,7 @@ simulated function bool LocationIsInSweep(vector DoorPivot, vector TestLocation,
     return true;    //candidate is blocking
 }
 
-simulated function UpdateOfficerDoorKnowledge()
+simulated function UpdateOfficerDoorKnowledge(optional bool locking)
 {
 	local SwatAIRepository AIRepo;
     local SwatPawn PlayerPawn;
@@ -1118,7 +1134,7 @@ simulated function UpdateOfficerDoorKnowledge()
 		if (AIRepo != None)
 			AIRepo.UpdateDoorKnowledgeForOfficers(self);
 		else                //no AIRepository... tell myself
-			PlayerPawn.SetDoorLockedBelief(self, false);
+			PlayerPawn.SetDoorLockedBelief(self, locking);
 	}
 }
 
@@ -1136,6 +1152,13 @@ simulated event bool PawnBelievesDoorLocked(SwatPawn Pawn)
         return KnowsDoorIsLocked(NetPawn.GetTeamNumber());
     } else
         return Info.DoesBelieveDoorLocked();
+}
+
+simulated function bool BelievesDoorLocked(Pawn p) {
+	local SwatPawn SwatPawn_;
+
+	SwatPawn_ = SwatPawn(p);
+	return PawnBelievesDoorLocked(SwatPawn_);
 }
 
 simulated function Broken()
@@ -2357,7 +2380,7 @@ simulated event bool IsC2ChargeOnPlayersSide()
 // Return true iff this can be operated by a toolkit now
 simulated function bool CanBeUsedByToolkitNow()
 {
-    return IsLocked();
+	return CanBeLocked();
 }
 
 // Called when qualifying begins.
@@ -2366,7 +2389,11 @@ function OnUsingByToolkitBegan( Pawn User );
 // Called when qualifying completes successfully.
 simulated function OnUsedByToolkit(Pawn User)
 {
+	if(bIsLocked || BelievesDoorLocked(User)) {
     OnUnlocked();
+	} else {
+		OnDoorLockedByOperator();
+	}
 }
 
 // Called when qualifying is interrupted.

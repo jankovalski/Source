@@ -23,6 +23,9 @@ var(SWATGui) protected EditInline Config GUIButton         MyScrollRightButton;
 var(SWATGui) protected EditInline Config GUIButton         MyScrollAmmoLeftButton;
 var(SWATGui) protected EditInline Config GUIButton         MyScrollAmmoRightButton;
 
+var(SWATGui) protected EditInline Config GUINumericEdit    MyAmmoMagazineCountSpinner;
+var(SWATGui) protected EditInline Config GUILabel          MyAmmoMagazineCountLabel;
+
 // Advanced Information panel
 // tabs
 var(SWATGui) protected EditInline Config GUILabel          MyAdvManufacturerTab;
@@ -40,6 +43,17 @@ var(SWATGui) protected EditInline Config GUILabel          MyEquipmentTotalAmmoL
 var(SWATGui) protected EditInline Config GUILabel          MyEquipmentFireModesLabel;
 var(SWATGui) protected EditInline Config GUILabel          MyEquipmentMuzzleVelocityLabel;
 var(SWATGui) protected EditInline Config GUILabel          MyEquipmentRateOfFireLabel;
+
+// Weight/Bulk system
+var(SWATGui) protected EditInline Config GUIProgressBar    MyEquipmentWeightBar;
+var(SWATGui) protected EditInline Config GUIProgressBar    MyEquipmentBulkBar;
+var(SWATGui) protected EditInline Config GUILabel          MyEquipmentWeightLabel;
+var(SWATGui) protected EditInline Config GUILabel          MyEquipmentBulkLabel;
+var(SWATGui) protected EditInline Config GUILabel          MyEquipmentWeightName;
+var(SWATGui) protected EditInline Config GUILabel          MyEquipmentBulkName;
+
+var(SWATGui) Config Localized String EquipmentOverWeightString;
+var(SWATGui) Config Localized String EquipmentOverBulkString;
 
 
 var(SWATGui) protected EditInline EditConst DynamicLoadOutSpec   MyCurrentLoadOut "Holds all current loadout info";
@@ -83,6 +97,7 @@ function InitComponent(GUIComponent MyOwner)
     MyScrollRightButton.OnClick=InternalOnScrollClick;
     MyScrollAmmoLeftButton.OnClick=InternalOnScrollClick;
     MyScrollAmmoRightButton.OnClick=InternalOnScrollClick;
+    MyAmmoMagazineCountSpinner.OnChange=MagazineCountChange;
 
     //equipment lists
 	for( i = 0; i < Pocket.EnumCount; i++ )
@@ -187,6 +202,82 @@ function ValidatePocketForSelection( Pocket thePocket )
 }
 
 ///////////////////////////
+// Functions for erroring if we have too much Weight
+///////////////////////////
+
+function TooMuchWeightModal() {
+  Controller.TopPage().OpenDlg( EquipmentOverWeightString, QBTN_Ok, "TooMuchWeight" );
+}
+
+function TooMuchBulkModal() {
+  Controller.TopPage().OpenDlg( EquipmentOverBulkString, QBTN_Ok, "TooMuchBulk" );
+}
+
+function bool CheckWeightBulkValidity() {
+  assertWithDescription(false, "CheckWeightBulkValidity got called in SwatLoadoutPanel. Use a child class member instead.");
+
+  return false;
+}
+
+///////////////////////////
+// Function for updating the bar display
+///////////////////////////
+function UpdateWeights() {
+  local float bulkDisplay;
+  local class<SwatAmmo> WeaponAmmo;
+
+  if(ActivePocket == Pocket_PrimaryWeapon) {
+    WeaponAmmo = class<SwatAmmo>(MyCurrentLoadOut.LoadOutSpec[1]);
+    MyAmmoMagazineCountSpinner.MinValue = WeaponAmmo.default.MinReloadsToCarry;
+    MyAmmoMagazineCountSpinner.MaxValue = WeaponAmmo.default.MaxReloadsToCarry;
+    MyAmmoMagazineCountSpinner.SetValue(MyCurrentLoadOut.GetPrimaryAmmoCount());
+    MyAmmoMagazineCountLabel.Caption = WeaponAmmo.default.ReloadsString;
+  } else if(ActivePocket == Pocket_SecondaryWeapon) {
+    WeaponAmmo = class<SwatAmmo>(MyCurrentLoadOut.LoadOutSpec[3]);
+    MyAmmoMagazineCountSpinner.MinValue = WeaponAmmo.default.MinReloadsToCarry;
+    MyAmmoMagazineCountSpinner.MaxValue = WeaponAmmo.default.MaxReloadsToCarry;
+    MyAmmoMagazineCountSpinner.SetValue(MyCurrentLoadOut.GetSecondaryAmmoCount());
+    MyAmmoMagazineCountLabel.Caption = WeaponAmmo.default.ReloadsString;
+  }
+
+  MyEquipmentWeightBar.Value = MyCurrentLoadOut.GetWeightPercentage();
+  MyEquipmentBulkBar.Value = MyCurrentLoadOut.GetBulkPercentage();
+
+  if(MyEquipmentWeightBar.Value < 0.0) {
+    MyEquipmentWeightBar.Value = 0.0;
+  } else if(MyEquipmentWeightBar.Value > 1.0) {
+    MyEquipmentWeightBar.Value = 1.0;
+    MyEquipmentWeightBar.BarColor.R = 255;
+    MyEquipmentWeightBar.BarColor.B = 0;
+    MyEquipmentWeightBar.BarColor.G = 0;
+    // TODO disable start button
+  } else {
+    MyEquipmentWeightBar.BarColor.R = 255;
+    MyEquipmentWeightBar.BarColor.B = 255;
+    MyEquipmentWeightBar.BarColor.G = 255;
+  }
+
+  if(MyEquipmentBulkBar.Value < 0.0) {
+    MyEquipmentBulkBar.Value = 0.0;
+  } else if(MyEquipmentBulkBar.Value > 1.0) {
+    MyEquipmentBulkBar.Value = 1.0;
+    MyEquipmentBulkBar.BarColor.R = 255;
+    MyEquipmentBulkBar.BarColor.B = 0;
+    MyEquipmentBulkBar.BarColor.G = 0;
+  } else {
+    MyEquipmentBulkBar.BarColor.R = 255;
+    MyEquipmentBulkBar.BarColor.B = 255;
+    MyEquipmentBulkBar.BarColor.G = 255;
+  }
+
+  bulkDisplay = MyCurrentLoadOut.GetBulkPercentage();
+  bulkDisplay *= 100.0;
+
+  MyEquipmentWeightLabel.Caption = ""$MyCurrentLoadOut.GetTotalWeight()$"kg";
+  MyEquipmentBulkLabel.Caption =""$bulkDisplay$"%";
+}
+
+///////////////////////////
 //Utility functions used for managing loadouts
 ///////////////////////////
 function LoadLoadOut( String loadOutName, optional bool bForceSpawn )
@@ -274,6 +365,14 @@ function LoadAmmoForWeapon( Pocket thePocket, class<FiredWeapon> WeaponClass )
     MyScrollAmmoLeftButton.SetActive( WeaponClass.default.PlayerAmmoOption.Length > 1 );
     MyScrollAmmoRightButton.SetActive( WeaponClass.default.PlayerAmmoOption.Length > 1 );
 
+    MyAmmoMagazineCountSpinner.MaxValue = 200;
+
+    if(thePocket == Pocket_PrimaryWeapon && ActivePocket == thePocket) {
+      MyAmmoMagazineCountSpinner.SetValue(MyCurrentLoadOut.GetPrimaryAmmoCount());
+    } else if(thePocket == Pocket_SecondaryWeapon && ActivePocket == thePocket) {
+      MyAmmoMagazineCountSpinner.SetValue(MyCurrentLoadOut.GetSecondaryAmmoCount());
+    }
+
     //set the current ammo for this loadout
     str = String(MyCurrentLoadOut.LoadOutSpec[OtherPocket].Name);
     EquipmentList[OtherPocket].Find( Str );
@@ -286,6 +385,8 @@ function LoadAmmoForWeapon( Pocket thePocket, class<FiredWeapon> WeaponClass )
     {
         Scrolled( OtherPocket, false );
     }
+
+    UpdateWeights();
 }
 
 // change the Loadout for the selected pocket
@@ -296,6 +397,7 @@ function ChangeLoadOut( Pocket thePocket )
     theItem = class<actor>(EquipmentList[thePocket].GetObject());
 
     MyCurrentLoadOut.LoadOutSpec[thePocket] = theItem;
+    log("LoadoutChange("$thePocket$") - "$theItem);
 
     //load out updated with selection from equipment list
     switch (thePocket)
@@ -367,6 +469,13 @@ function DisplayEquipment( Pocket thePocket )
       MyEquipmentFireModesLabel.SetCaption(EquipmentWeaponClass.static.GetFireModes());
       MyEquipmentMuzzleVelocityLabel.SetCaption(EquipmentWeaponClass.static.GetMuzzleVelocityString());
       MyEquipmentRateOfFireLabel.SetCaption(EquipmentWeaponClass.static.GetRateOfFire());
+
+      MyAmmoMagazineCountSpinner.SetVisibility(true);
+      MyAmmoMagazineCountLabel.SetVisibility(true);
+      MyAmmoMagazineCountSpinner.SetActive(true);
+    } else {
+      MyAmmoMagazineCountSpinner.SetVisibility(false);
+      MyAmmoMagazineCountLabel.SetVisibility(false);
     }
 
     switch(thePocket)
@@ -390,6 +499,8 @@ function DisplayEquipment( Pocket thePocket )
             MyEquipmentInfoBox.SetContent( Equipment.static.GetDescription() );
             break;
     }
+
+    UpdateWeights();
 }
 
 // update must be made whenever a scroll button is pressed
@@ -457,9 +568,27 @@ function UpdateIndex( Pocket thePocket )
     }
 }
 
+function SaveCurrentLoadout()
+{
+  assert(false); // needs to be implemented by children
+}
+
 ///////////////////////////
 // Component delegates
 ///////////////////////////
+private function MagazineCountChange(GUIComponent Sender) {
+  local GUINumericEdit SenderEdit;
+  SenderEdit = GUINumericEdit(Sender);
+
+  if(ActivePocket == Pocket_PrimaryWeapon) {
+    MyCurrentLoadOut.SetPrimaryAmmoCount(SenderEdit.Value);
+  } else if(ActivePocket == Pocket_SecondaryWeapon) {
+    MyCurrentLoadOut.SetSecondaryAmmoCount(SenderEdit.Value);
+  }
+  UpdateWeights();
+  SaveCurrentLoadout();
+}
+
 private function InternalOnScrollClick(GUIComponent Sender)
 {
     local bool bLeftScrollUsed; //scrolling left?
@@ -504,8 +633,11 @@ private function InternalSelectorButtonOnClick(GUIComponent Sender)
         }
     }
 
+    MyAmmoMagazineCountSpinner.MaxValue = 200; // temp
+
     UpdateIndex(ActivePocket);
     DisplayEquipment(ActivePocket);
+    UpdateWeights();
 }
 
 private function InternalTabButtonOnClick(GUIComponent Sender)
@@ -520,12 +652,18 @@ private function InternalTabButtonOnClick(GUIComponent Sender)
             break;
         }
     }
+
+    MyAmmoMagazineCountSpinner.MaxValue = 200; // temp
+
     DisplayTab( ActiveTab );
+    UpdateWeights();
 }
 
 private function DisplayTab(int tabNum)
 {
     local int i;
+
+    MyAmmoMagazineCountSpinner.MaxValue = 200; // temp
 
     for( i = 0; i < PocketTabs.Length; i++ )
     {
@@ -542,6 +680,8 @@ private function DisplayTab(int tabNum)
             MyScrollAmmoRightButton.SetVisibility( ActiveAmmoPocket != Pocket.Pocket_Invalid );
             MyScrollAmmoLeftButton.SetActive( ActiveAmmoPocket != Pocket.Pocket_Invalid );
             MyScrollAmmoRightButton.SetActive( ActiveAmmoPocket != Pocket.Pocket_Invalid );
+            MyAmmoMagazineCountSpinner.SetActive(ActiveAmmoPocket != Pocket.Pocket_Invalid);
+            MyAmmoMagazineCountLabel.SetActive(ActiveAmmoPocket != Pocket.Pocket_Invalid);
 
             MyWeaponInfoBox.SetVisibility( ActiveAmmoPocket != Pocket.Pocket_Invalid );
             MyEquipmentInfoBox.SetVisibility( ActiveAmmoPocket == Pocket.Pocket_Invalid );
@@ -592,6 +732,7 @@ private function DisplayTab(int tabNum)
     UpdateIndex(ActiveAmmoPocket);
     DisplayEquipment(ActiveAmmoPocket);
     DisplayEquipment(ActivePocket);
+    UpdateWeights();
 }
 
 function DynamicLoadOutSpec GetCurrentLoadout()

@@ -27,6 +27,7 @@ enum eIMDType
 
 var(SwatGUIController) Editinline EditConst	Array<GUIPage>	StorageStack "Holds an out-of-game set of page names for recreating the stack";
 
+var(SwatGUIController) public EditInline EditConst SwatSPLoadoutPanel              SPLoadoutPanel "The loadout panel that should be used to display messages";
 var(SwatGUIController) private Editinline EditConst SwatMPLoadoutPanel              MPLoadoutPanel "The loadout panel that should be used to display messages";
 var(SwatGUIController) private Editinline EditConst array<SwatChatPanel>            ChatPanel "The chat panel that should be used to display messages";
 var(SwatGUIController) private Editinline EditConst SwatImportantMessageDisplay     ImportantMessageDisplays[eIMDType.EnumCount] "The important message display";
@@ -84,6 +85,8 @@ var() string EnteredChatText;
 var() bool   EnteredChatGlobal;
 
 var() private config bool DispatchDisabled;
+
+var() bool coopcampaign;
 
 /////////////////////////////////////////////////////////////////////////////
 // Initialization
@@ -252,7 +255,7 @@ log("[dkaplan] >>> OnStateChange of (SwatGUIController) "$self);
         case GAMESTATE_PostGame:
             HUDPage(GetHudPage()).OnGameOver();
 
-            if( GuiConfig.SwatGameRole == GAMEROLE_MP_Host ||
+            if( (GuiConfig.SwatGameRole == GAMEROLE_MP_Host && !coopcampaign) ||
                 GuiConfig.SwatGameRole == GAMEROLE_MP_Client )
             {
                 InternalOpenMenu( MPPopupMenu );
@@ -261,8 +264,8 @@ log("[dkaplan] >>> OnStateChange of (SwatGUIController) "$self);
             {
                 GuiConfig.CurrentMission.SetHasMetDifficultyRequirement( GetSwatGameInfo().LeadershipStatus() >= GuiConfig.DifficultyScoreRequirement[GuiConfig.CurrentDifficulty] );
 
-                if( GuiConfig.SwatGameRole == GAMEROLE_SP_Campaign &&
-                    Campaign != None )
+                if( (GuiConfig.SwatGameRole == GAMEROLE_SP_Campaign &&
+                    Campaign != None) || coopcampaign )
                 {
                     Campaign.MissionEnded(GetLevelInfo().Label, GuiConfig.CurrentDifficulty,!(GuiConfig.CurrentMission.IsMissionFailed()), GetSwatGameInfo().LeadershipStatus(), GuiConfig.CurrentMission.HasMetDifficultyRequirement() );    //completed
                 }
@@ -364,7 +367,7 @@ private function ClearChatHistory()
 function bool OnMessageRecieved( String Msg, Name Type )
 {
 //log( "[dkaplan]: >>>OnMessageRecieved: Msg = "$Msg$", Type = "$Type$", ViewportOwner.Actor = "$ViewportOwner.Actor);
-
+    ViewportOwner.Actor.ConsoleMessage("OnMessageReceived("$Type$"): "$Msg);
     switch (Type)
     {
         case 'Connected':
@@ -1057,4 +1060,6 @@ defaultproperties
 	VoteYesNoKeys="Vote yes = %1, Vote no = %2"
 
     CaptureScriptExec=true
+	
+	coopcampaign=false
 }

@@ -1,31 +1,32 @@
 class FiredWeapon extends Weapon
+    abstract
     native;
 
-var config array<String> PlayerAmmoOption;  //Specifies ammo to be made available in the GUI when this is selected
+var(Ammo) config array<String> PlayerAmmoOption  "Specifies ammo to be made available in the GUI when this is selected";
 
 struct native EnemyAmmo
 {
-    var config string           AmmoClass;
-    var config int              Chance;
+    var() config string           AmmoClass;
+    var() config int              Chance;
 
     //set at runtime by SelectAmmoClass()
-    var class<Ammunition>       LoadedAmmoClass;
+    var() class<Ammunition>       LoadedAmmoClass;
 };
-var config array<EnemyAmmo>     EnemyUsesAmmo;
+var(Ammo) config array<EnemyAmmo>     EnemyUsesAmmo;
 var class<Ammunition>           AmmoClass;
 var Ammunition                  Ammo;
 var bool						bHasAmmoBandolier;
 
-var config vector               ThirdPersonFireOffset;         // the offset from our pivot to the muzzle tip
-var config float                MuzzleVelocity;                // the velocity that this FiredWeapon imparts to a fired bullet
-var config bool					bCanShootThroughGlass;		   // can this weapon shoot through glass (this is just letting the AIs know so they don't try)
-var config bool					bAimAtHead;						// should this weapon be aimed at the head (for AIs)
+var(Firing) config vector               ThirdPersonFireOffset         "The offset from our pivot to the muzzle tip";
+var(Firing) config float                MuzzleVelocity                "The velocity that this FiredWeapon imparts to a fired bullet";
+var(Firing) config bool					bCanShootThroughGlass		   "Can this weapon shoot through glass (this is just letting the AIs know so they don't try)";
+var(AI) config bool					bAimAtHead						"Should this weapon be aimed at the head (for AIs)";
 
 var private float               NextFireTime;                  // the time when we can be used again (compare against Level.TimeSeconds)
 
 var private ActionStatus        ReloadingStatus;
 
-var config float                ReloadAnimationRate;
+var(Reloading) config float                ReloadAnimationRate;
 
 var int							DeathFired;						// used to stop players expelling entire clips on death
 
@@ -43,46 +44,45 @@ var protected float AimError;                       //in degrees, the maximum an
                                                     //  rotation anywhere within 36 degrees, or 10% of a full sphere.
 
 var private float PendingAimErrorPenalty;           //penalties that have been received but not yet applied
-var config float MaxAimError;                       //AimError is never allowed to be above this value
-var config float SmallAimErrorRecoveryRate;         //AimError recovered per second until base AimError is achieved, when AimError is > AimErrorBreakingPoint
-var config float LargeAimErrorRecoveryRate;         //AimError recovered per second until base AimError is achieved, when AimError is <= AimErrorBreakingPoint
-var config float AimErrorBreakingPoint;             //At what multiple of BaseAimError does recovery transition from LargeAimErrorRecoveryRate to SmallAimErrorRecoveryRate
+var(Aim) config float MaxAimError                       "AimError is never allowed to be above this value";
+var(Aim) config float SmallAimErrorRecoveryRate         "AimError recovered per second until base AimError is achieved, when AimError is > AimErrorBreakingPoint";
+var(Aim) config float LargeAimErrorRecoveryRate         "AimError recovered per second until base AimError is achieved, when AimError is <= AimErrorBreakingPoint";
+var(Aim) config float AimErrorBreakingPoint             "At what multiple of BaseAimError does recovery transition from LargeAimErrorRecoveryRate to SmallAimErrorRecoveryRate";
 var float LookAimErrorQuantizationFactor;           //the "grid spacing" of the LookAimError... so that looking around doesn't make the reticle feel "jittery"
 
 // These values are penalties applied to AimError (ie. values added to AimError) when certain events occur during the game:
-var config float LookAimErrorPenaltyFactor;         //a penalty applied to AimError when the player looks around.  the total penalty applied is the amount of movement per second times this factor, ie. the greater the movement, the greater the movement adversely affects accuracy.
-var config float MaxLookAimErrorPenalty;
-var config float InjuredAimErrorPenalty;
-var config float MaxInjuredAimErrorPenalty;
-var config float DamagedAimErrorPenalty;
-var config float EquippedAimErrorPenalty;
-var config float FiredAimErrorPenalty;
-var config float WalkToRunAimErrorPenalty;
-var config float StandToWalkAimErrorPenalty;
+var(Aim) config float LookAimErrorPenaltyFactor         "A penalty applied to AimError when the player looks around.  the total penalty applied is the amount of movement per second times this factor, ie. the greater the movement, the greater the movement adversely affects accuracy.";
+var(Aim) config float MaxLookAimErrorPenalty;
+var(Aim) config float InjuredAimErrorPenalty;
+var(Aim) config float MaxInjuredAimErrorPenalty;
+var(Aim) config float DamagedAimErrorPenalty;
+var(Aim) config float EquippedAimErrorPenalty;
+var(Aim) config float FiredAimErrorPenalty;
+var(Aim) config float WalkToRunAimErrorPenalty;
+var(Aim) config float StandToWalkAimErrorPenalty;
 
 // These values represent a Pawn's base accuracy under given conditions, ie. the best accuracy that the Pawn can have in these conditions:
-var config float StandingAimError;
-var config float WalkingAimError;
-var config float RunningAimError;
-var config float CrouchingAimError;
+var(Aim) config float StandingAimError;
+var(Aim) config float WalkingAimError;
+var(Aim) config float RunningAimError;
+var(Aim) config float CrouchingAimError;
 
 //recoil causes a back-and-forward movement of the camera after firing, to represent the recoiling forces of a person recovering from firing a weapon
-var config float RecoilBackDuration;                //the time over which this FiredWeapon will cause the camera to move back
-var config float RecoilForeDuration;                //the time over which this FiredWeapon will cause the camera to move forward
-var config float RecoilMagnitude;                   //how far this FiredWeapon will cause the camera to pitch back.  the camera will pitch forward the same amount unless another recoil is applied before a previous recoil is fully complete.
-var config float AutoFireRecoilMagnitudeIncrement;  //each contiguous auto-fire shot accumulates another AutoFireRecoilMagnitudeIncrement
-                                                    //So auto-fire shot n's recoil value = RecoilMagnitude + n * AutoFireRecoilMagnitudeIncrement
+var(Recoil) config float RecoilBackDuration                "The time over which this FiredWeapon will cause the camera to move back";
+var(Recoil) config float RecoilForeDuration                "The time over which this FiredWeapon will cause the camera to move forward";
+var(Recoil) config float RecoilMagnitude                   "How far this FiredWeapon will cause the camera to pitch back.  The camera will pitch forward the same amount unless another recoil is applied before a previous recoil is fully complete.";
+var(Recoil) config float AutoFireRecoilMagnitudeIncrement  "Each contiguous auto-fire shot accumulates another AutoFireRecoilMagnitudeIncrement. So auto-fire shot n's recoil value = RecoilMagnitude + n * AutoFireRecoilMagnitudeIncrement";
 
-var config bool DebugPerfectAim;        // If true, when the weapon is fired the game will act as if you have perfect aim (i.e., ignore any current aim error)
-var config bool DebugDrawTraceFire;     // If true, when the weapon is fired the game will draw line(s) representing the path of the bullet(s) after AimError has been applied
-var config bool DebugDrawAccuracyCone;  // If true, when the weapon is fired the game will draw the cone representing the AimError-adusted area through which the bullet might travel
+var config bool DebugPerfectAim        "If true, when the weapon is fired the game will act as if you have perfect aim (i.e., ignore any current aim error)";
+var config bool DebugDrawTraceFire     "If true, when the weapon is fired the game will draw line(s) representing the path of the bullet(s) after AimError has been applied";
+var config bool DebugDrawAccuracyCone  "If true, when the weapon is fired the game will draw the cone representing the AimError-adusted area through which the bullet might travel";
 
 // flashlights
-var private config bool HasAttachedFlashlight;           // If true, this weapon will enable flashlight on/off toggling and create a light source at located at the socket specified in the FlashlightSocketName property
-var private config vector  FlashlightPosition_1stPerson; // Positional offset from the EquippedSocket on this weapon's FirstPersonModel to the point from which the flashlight emanates
-var private config rotator FlashlightRotation_1stPerson; // Same idea as FlashlightPosition_1stPerson, but rotational offset
-var private config vector  FlashlightPosition_3rdPerson; // Positional offset from the EquippedSocket on this weapon's ThirdPersonModel to the point from which the flashlight emanates
-var private config rotator FlashlightRotation_3rdPerson; // Same idea as FlashlightPosition_3rdPerson, but rotational offset
+var(Flashlight) private config bool HasAttachedFlashlight           "If true, this weapon will enable flashlight on/off toggling and create a light source at located at the socket specified in the FlashlightSocketName property";
+var(Flashlight) private config vector  FlashlightPosition_1stPerson "Positional offset from the EquippedSocket on this weapon's FirstPersonModel to the point from which the flashlight emanates";
+var(Flashlight) private config rotator FlashlightRotation_1stPerson "Same idea as FlashlightPosition_1stPerson, but rotational offset";
+var(Flashlight) private config vector  FlashlightPosition_3rdPerson "Positional offset from the EquippedSocket on this weapon's ThirdPersonModel to the point from which the flashlight emanates";
+var(Flashlight) private config rotator FlashlightRotation_3rdPerson "Same idea as FlashlightPosition_3rdPerson, but rotational offset";
 const FLASHLIGHT_TEXTURE_INDEX = 1;                      // Material index for the flashlight "glow" texture
 
 // State used for determining if a 3rd person flashlight projection is
@@ -106,21 +106,21 @@ var private float  FlashlightProjection_CurrentBrightnessAlpha;         // From 
 #define ENABLE_FLASHLIGHT_PROJECTION_VISIBILITY_TESTING 1
 
 //------- Flashlight lighting parameters ----------
-var private config class<Light> FlashlightSpotLightClass;   // Type of Spotlight to spawn for this weapon's flashlight
-var private config class<Light> FlashlightPointLightClass;  // Type of Pointlight to spawn for this weapon's flashlight
-var private config class<Light> FlashlightCoronaLightClass; // Type of CoronaLight to spawn for this weapon's flashlight
-var private config float PointLightDistanceFraction;     // where to place the pointlight along the line to the nearest object (0 = at flashlight, 1=at object intersection)
-var private config float PointLightRadiusScale;          // how much to scale the pointlight radius with distance from the nearest object
-var private config float PointLightDistanceFadeRate;     // How fast will the pointlight incorporate new distance values;
+var(Flashlight) private config class<Light> FlashlightSpotLightClass   "Type of Spotlight to spawn for this weapon's flashlight";
+var(Flashlight) private config class<Light> FlashlightPointLightClass  "Type of Pointlight to spawn for this weapon's flashlight";
+var(Flashlight) private config class<Light> FlashlightCoronaLightClass "Type of CoronaLight to spawn for this weapon's flashlight";
+var(Flashlight) private config float PointLightDistanceFraction     "Where to place the pointlight along the line to the nearest object (0 = at flashlight, 1=at object intersection)";
+var(Flashlight) private config float PointLightRadiusScale          "How much to scale the pointlight radius with distance from the nearest object";
+var(Flashlight) private config float PointLightDistanceFadeRate     "How fast will the pointlight incorporate new distance values";
 var private Light  FlashlightDynamicLight;                 // The actual light spawned for this weapon's flashlight
 var private Actor  FlashlightReferenceActor;             // Reference point for the flashlight's position; this is where the flashlight appears to originate from (where the corona appears, and where traces are done from when using a moving pointlight on low end cards to approximate a spotlight)
-var config  bool   DebugDrawFlashlightDir;               // if true, draw the trace lines and sprites for the flashlight lights
-var config  int    FlashlightUseFancyLights;             // for flashlights: -1 = uninitialized, 1 = spotlights, 0 = point lights
-var config  float  MinFlashlightBrightness;              // The brightness at the max distance of the flashlight
-var config  float  MinFlashlightRadius;                  // The brightness at the max distance of the flashlight
-var config  float  FlashlightFirstPersonDistance;        // Distance to pointlight in non-fancy mode, 1st person
-var config  float  MaxFlashlightDistance;                // The brightness at the max distance of the flashlight
-var config  float  ThirdPersonFlashlightRadiusPenalty;   // The radius penalty on flishlights for 3rd person flashlights so that they do not take away from the limited lighting resources of static meshes.
+var(Debug) config  bool   DebugDrawFlashlightDir               "If true, draw the trace lines and sprites for the flashlight lights";
+var(Flashlight) config  int    FlashlightUseFancyLights              "for flashlights: -1 = uninitialized, 1 = spotlights, 0 = point lights";
+var(Flashlight) config  float  MinFlashlightBrightness               "The brightness at the max distance of the flashlight";
+var(Flashlight) config  float  MinFlashlightRadius                   "The brightness at the max distance of the flashlight";
+var(Flashlight) config  float  FlashlightFirstPersonDistance         "Distance to pointlight in non-fancy mode, 1st person";
+var(Flashlight) config  float  MaxFlashlightDistance                 "The brightness at the max distance of the flashlight";
+var(Flashlight) config  float  ThirdPersonFlashlightRadiusPenalty    "The radius penalty on flishlights for 3rd person flashlights so that they do not take away from the limited lighting resources of static meshes.";
 var private bool   bHighEndGraphicsBoard;                // determines which type of lights are used in the flashlights
 var private float  BaseFlashlightBrightness;             // The base level brightness that will be scaled with distance
 var private float  BaseFlashlightRadius;                 // radius specified in the flashlight's light source
@@ -136,20 +136,20 @@ enum FireMode
     FireMode_Burst,
     FireMode_Auto
 };
-var private config array<FireMode> AvailableFireMode;       //named in singular for simplicity of config file
+var(Firing) private config array<FireMode> AvailableFireMode       "Named in singular for simplicity of config file";
 var FireMode CurrentFireMode;                               //set with SetCurrentFireMode()
 var int FireModeIndex;                                      //the currently selected index into the FiredWeapon's AvailableFireMode
-var private config int BurstShotCount;                      //the number of shots that will be fired when CurrentFireMode is FireMode_Burst
+var(Firing) private config int BurstShotCount                      "The number of shots that will be fired when CurrentFireMode is FireMode_Burst";
 var private int BurstShotsRemaining;                        //while firing in FireMode_Burst, how many shots remain to be shot in the current burst
-var config float BurstRateFactor;                           //the rate at which burst and auto-fire animations are played
+var(Firing) config float BurstRateFactor                           "The rate at which burst and auto-fire animations are played";
 
 var private int AutoFireShotIndex;                          //while firing in FireMode_Auto, how many shots have been started since the FiredWeapon began auto-firing
 
 var private bool PerfectAimNextShot;                        //for special purposes, we want to be able to take a shot with perfect aim, ie. Officers with shotguns
 
-var private config float OverrideArmDamageModifier;
+var(Damage) private config float OverrideArmDamageModifier;
 
-var config bool OfficerWontEquipAsPrimary;					// if true Officer will use secondary weapon unless ordered otherwise
+var(AI) config bool OfficerWontEquipAsPrimary					"If true Officer will use secondary weapon unless ordered otherwise";
 
 #define DONT_REQUIRE_PENETRATION_FOR_BLOOD_PROJECTORS 1
 
@@ -168,6 +168,7 @@ simulated function PreBeginPlay()
     }
 
     UpdateAimError(0);
+
     Disable('Tick');
 }
 
@@ -291,30 +292,6 @@ simulated function TraceFire()
         DrawAccuracyCone(PerfectStartLocation, PerfectStartDirection);
 #endif
 
-    // eez: Had to redo the below code so that shotgun accuracy is correct
-    /*
-    for (Shot = 0; Shot < Ammo.ShotsPerRound; ++Shot)
-    {
-        StartLocation = PerfectStartLocation;
-        StartDirection = PerfectStartDirection;
-
-#if !IG_SWAT_DISABLE_VISUAL_DEBUGGING // ckline: prevent cheating in network games
-        if (!DebugPerfectAim && !PerfectAimNextShot)
-#endif
-            ApplyAimError(StartDirection);
-
-        StartTrace = StartLocation;
-        EndTrace = StartLocation + vector(StartDirection) * Range;
-
-#if !IG_SWAT_DISABLE_VISUAL_DEBUGGING // ckline: prevent cheating in network games
-        if (DebugDrawTraceFire)
-            Level.GetLocalPlayerController().myHUD.AddDebugLine(StartTrace, EndTrace, class'Engine.Canvas'.Static.MakeColor(255,0,0), 5);
-#endif
-
-        BallisticFire(StartTrace, EndTrace);
-    }
-    */
-
     StartLocation = PerfectStartLocation;
     StartDirection = PerfectStartDirection;
     ApplyAimError(StartDirection);
@@ -360,6 +337,88 @@ simulated function ApplyAimError(out rotator FireDirection)
 
 native function ApplyRandomOffsetToRotation(rotator OriginalRotation, float OffsetHalfAngleRadians, out rotator NewRotation);
 
+// Handles bullet fracture
+// TODO
+/*
+simulated function bool HandleBallisticImpact(
+    Actor Victim,
+    vector HitLocation,
+    vector HitNormal,
+    vector NormalizedBulletDirection,
+    Material HitMaterial,
+    ESkeletalRegion HitRegion,
+    out float Momentum,
+    vector ExitLocation,
+    vector ExitNormal,
+    Material ExitMaterial
+    )*/
+
+// Handles bullet ricochet.
+// For right now, all this does is fire the bullet in a perfect mirror.
+simulated function DoBulletRicochet(Actor Victim, vector HitLocation, vector HitNormal, vector BulletDirection, Material HitMaterial, float Momentum, int BounceCount)
+{
+  local vector MirroredAngle, EndTrace;
+  local vector NewHitLocation, NewHitNormal, NewExitLocation, NewExitNormal;
+  local Material NewHitMaterial, NewExitMaterial;
+  local Actor NewVictim;
+  local ESkeletalRegion NewHitRegion;
+
+  BounceCount = BounceCount + 1;
+  MirroredAngle = BulletDirection - 2 * (BulletDirection dot Normal(HitNormal)) * Normal(HitNormal);
+  Momentum *= Ammo.GetRicochetMomentumModifier();
+  EndTrace = HitLocation + MirroredAngle * Range;
+
+  // Play an effect when it hits the first surface
+  Ammo.SetLocation(HitLocation);
+  Ammo.SetRotation(rotator(HitNormal));
+  #if IG_EFFECTS
+      //don't play hit effects on the sky
+      if (HitMaterial == None || HitMaterial.MaterialVisualType != MVT_Sky)
+      {
+          Ammo.TriggerEffectEvent('BulletHit', Victim, HitMaterial);
+      }
+  #endif // IG_EFFECTS
+
+  foreach TraceActors(
+      class'Actor',
+      NewVictim,
+      NewHitLocation,
+      NewHitNormal,
+      NewHitMaterial,
+      EndTrace,
+      HitLocation,
+      /*extent*/,
+      true,
+      NewHitRegion,
+      true,
+      true,
+      NewExitLocation,
+      NewExitNormal,
+      NewExitMaterial
+    )
+  {
+      Ammo.BallisticsLog("Ricochet bullet made an impact on Victim="$NewVictim$
+          ", NewHitLocation="$NewHitLocation$
+          ", NewHitNormal="$NewHitNormal$
+          ", NewHitMaterial="$NewHitMaterial.MaterialVisualType);
+
+      Ammo.BallisticsLog("Momentum (before drag): "$Momentum);
+      // Reduce the bullet's momentum by drag
+      Momentum -= Ammo.GetDrag() * VSize(NewHitLocation - HitLocation);
+      Ammo.BallisticsLog("Momentum (after drag): "$Momentum);
+
+      if(Ammo.CanRicochet(NewVictim, NewHitLocation, NewHitNormal, Normal(NewHitLocation - NewHitNormal), NewHitMaterial, Momentum, BounceCount)) {
+        // the bullet ricocheted from the material
+        DoBulletRicochet(NewVictim, NewHitLocation, NewHitNormal, Normal(NewHitLocation - NewHitNormal), NewHitMaterial, Momentum, BounceCount);
+        break;
+      } else if(!HandleBallisticImpact(NewVictim, NewHitLocation, NewHitNormal, Normal(NewHitLocation - NewHitNormal), NewHitMaterial,
+                  NewHitRegion, Momentum, NewExitLocation, NewExitNormal, NewExitMaterial)) {
+        // the bullet embedded itself into the material
+        break;
+      }
+  }
+}
+
 //handles the physics simulation of a bullet hitting something in the world.
 //determines how much damage a target should take, and if the shot should conseptually "penetrate" a target.
 //if a shot "penetrates" a target, then BallisticFire continues to evaluate hits until the shot is
@@ -378,16 +437,13 @@ simulated function BallisticFire(vector StartTrace, vector EndTrace)
 
     Momentum = MuzzleVelocity * Ammo.Mass;
 
-    if (Level.AnalyzeBallistics)
-    {
-        log("[BALLISTICS] BallisticFire(): Weapon "$name
-            $", shot by "$Owner.name
-            $", has MuzzleVelocity="$MuzzleVelocity
-            $", Ammo "$Ammo.name
-            $" has Mass="$Ammo.Mass
-            $".  Initial Momentum is "$Momentum
-            $".");
-    }
+    Ammo.BallisticsLog("BallisticFire(): Weapon "$name
+        $", shot by "$Owner.name
+        $", has MuzzleVelocity="$MuzzleVelocity
+        $", Ammo "$Ammo.name
+        $" has Mass="$Ammo.Mass
+        $".  Initial Momentum is "$Momentum
+        $".");
 
     foreach TraceActors(
         class'Actor',
@@ -406,8 +462,17 @@ simulated function BallisticFire(vector StartTrace, vector EndTrace)
         ExitNormal,
         ExitMaterial )
     {
+        Ammo.BallisticsLog("IMPACT: Momentum before drag: "$Momentum);
+        Momentum -= Ammo.GetDrag() * VSize(HitLocation - StartTrace);
+        Ammo.BallisticsLog("IMPACT: Momentum after drag: "$Momentum);
+
         //handle each ballistic impact until the bullet runs out of momentum and does not penetrate
-        if (!HandleBallisticImpact(Victim, HitLocation, HitNormal, Normal(HitLocation - StartTrace), HitMaterial, HitRegion, Momentum, ExitLocation, ExitNormal, ExitMaterial))
+        if (Ammo.CanRicochet(Victim, HitLocation, HitNormal, Normal(HitLocation - StartTrace), HitMaterial, Momentum, 0)) {
+          // Do a ricochet
+          DoBulletRicochet(Victim, HitLocation, HitNormal, Normal(HitLocation - StartTrace), HitMaterial, Momentum, 0);
+          break;
+        }
+        else if (!HandleBallisticImpact(Victim, HitLocation, HitNormal, Normal(HitLocation - StartTrace), HitMaterial, HitRegion, Momentum, ExitLocation, ExitNormal, ExitMaterial))
             break;
     }
 }
@@ -465,10 +530,7 @@ simulated function bool HandleBallisticImpact(
     // handle that as a special case.
     if ((Victim.bHidden || Victim.DrawType == DT_None) && !(Victim.IsA('LevelInfo')))
     {
-        if (Level.AnalyzeBallistics)
-        {
-            log("BallisticFire: Skipping bHidden=true Victim "$Victim.Name$" of class "$Victim.class.name);
-        }
+        Ammo.BallisticsLog("BallisticFire: Skipping bHidden=true Victim "$Victim.Name$" of class "$Victim.class.name);
         return true;    //penetrates, no damage or momentum lost
     }
 
@@ -479,10 +541,7 @@ simulated function bool HandleBallisticImpact(
 	if (Owner.IsA('SwatOfficer') &&
 		(Victim.IsA('SwatOfficer') || (Victim.IsA('SwatPlayer') && !Pawn(Owner).IsAttackingPlayer())))
 	{
-        if (Level.AnalyzeBallistics)
-        {
-            log("BallisticFire: Skipping Victim "$Victim.Name$" of class "$Victim.class.name$" because officers shouldn't hit other friendly officers/players");
-        }
+    Ammo.BallisticsLog("BallisticFire: Skipping Victim "$Victim.Name$" of class "$Victim.class.name$" because officers shouldn't hit other friendly officers/players");
 		return false;   //friendly fire... blocked, no effects
 	}
 
@@ -492,13 +551,10 @@ simulated function bool HandleBallisticImpact(
 	if( (Victim.bHighDetail && Level.DetailMode == DM_Low)
          || (Victim.bSuperHighDetail && Level.DetailMode != DM_SuperHigh))
     {
-        if (Level.AnalyzeBallistics)
-        {
-            log("BallisticFire: Skipping Victim "$Victim.Name$" of class "$Victim.class.name$
+        Ammo.BallisticsLog("BallisticFire: Skipping Victim "$Victim.Name$" of class "$Victim.class.name$
                 " because Level.DetailMode="$GetEnum(EDetailMode, Level.DetailMode)$
                 " and Victim.bHighDetail="$Victim.bHighDetail$
                 " and Victim.bSuperHighDetail="$Victim.bSuperHighDetail);
-        }
         return true;    //penetrates, no damage or momentum lost
     }
 
@@ -542,10 +598,7 @@ simulated function bool HandleBallisticImpact(
 
     if (HitMaterial == None) // weird situation, should trigger FX but not block the bullet (or should it?)
     {
-        if (Level.AnalyzeBallistics)
-        {
-            Log("[WARNING!!] BallisticFire: Trace hit Victim "$Victim$" of class "$Victim.class.name$", HitMaterial is None, treating as if no momentum required to penetrate.");
-        }
+        Ammo.BallisticsLog("[WARNING!!] BallisticFire: Trace hit Victim "$Victim$" of class "$Victim.class.name$", HitMaterial is None, treating as if no momentum required to penetrate.");
         MomentumLostToVictim = 0;
     }
     else
@@ -611,68 +664,64 @@ simulated function bool HandleBallisticImpact(
     }
 #endif // IG_EFFECTS
 
-    if (Level.AnalyzeBallistics)
+    Ammo.BallisticsLog("  ->  Remaining Momentum is "$Momentum$". Bullet hit Victim "$Victim.name);
+
+    if (HitMaterial != None)
+        Ammo.BallisticsLog("  ... HitMaterial = "$HitMaterial);
+    else
+        Ammo.BallisticsLog("  ... HitMaterial = None");
+
+    Ammo.BallisticsLog("  ... MomentumToPenetrateVictim is "$MomentumToPenetrateVictim$", so the bullet will lose "$MomentumLostToVictim$" momentum to the Victim.");
+
+    if ( HitRegion != REGION_None && Victim.IsA( 'IHaveSkeletalRegions' ) )
     {
-        log("[BALLISTICS]   ->  Remaining Momentum is "$Momentum$". Bullet hit Victim "$Victim.name);
-
-        // Prevent None material from screwing up the log() call
-        if (HitMaterial != None)
-            log("[BALLISTICS]   ... HitMaterial = "$HitMaterial);
-        else
-            log("[BALLISTICS]   ... HitMaterial = None");
-
-        log("[BALLISTICS]   ... MomentumToPenetrateVictim is "$MomentumToPenetrateVictim$", so the bullet will lose "$MomentumLostToVictim$" momentum to the Victim.");
-
-        if ( HitRegion != REGION_None && Victim.IsA( 'IHaveSkeletalRegions' ) )
+        Ammo.BallisticsLog("  ... Victim has SkeletalRegions.  "$GetEnum(ESkeletalRegion, HitRegion)$" was hit.");
+        if (Protection != None)
+            Ammo.BallisticsLog("  ... (Region is protected by "$Protection.class.name$".)");
+        if ( OverrideArmDamageModifier != 0 && (HitRegion == REGION_LeftArm || HitRegion == REGION_RightArm) )
         {
-            log("[BALLISTICS]   ... Victim has SkeletalRegions.  "$GetEnum(ESkeletalRegion, HitRegion)$" was hit.");
-            if (Protection != None)
-                log("[BALLISTICS]   ... (Region is protected by "$Protection.class.name$".)");
-            if ( OverrideArmDamageModifier != 0 && (HitRegion == REGION_LeftArm || HitRegion == REGION_RightArm) )
-            {
-                log("[BALLISTICS]   ... DamageModifier from the skeletal region was overriden for this arm hit, the OverrideArmDamageModifier is: "
-                    $OverrideArmDamageModifier);
-            }
-            else
-            {
-                log("[BALLISTICS]   ... DamageModifier from the skeletal region is on the Range (Min="$SkeletalRegionInformation.DamageModifier.Min
-                    $", Max="$SkeletalRegionInformation.DamageModifier.Max
-                    $"), Selected "$DamageModifier
-                    $".");
-            }
-            log("[BALLISTICS]   ... ExternalDamageModifier = "$ExternalDamageModifier
-                $".");
-            log("[BALLISTICS]   ... AimErrorPenalty in on Range (Min="$SkeletalRegionInformation.AimErrorPenalty.Min
-                $", Max="$SkeletalRegionInformation.AimErrorPenalty.Max
-                $"), Selected "$LimbInjuryAimErrorPenalty
-                $".");
-
-            if (PenetratesVictim)
-                log("[BALLISTICS]   ... Victim was penetrated:          Damage = MomentumLostToVictim * MomentumToDamageConversionFactor * DamageModifier * ExternalDamageModifier = "$MomentumLostToVictim
-                    $" * "$Level.GetRepo().MomentumToDamageConversionFactor
-                    $" * "$DamageModifier
-                    $" * "$ExternalDamageModifier
-                    $" = "$Damage);
-            else
-                log("[BALLISTICS]   ... Bullet was buried in Victim:    Damage = ((MomentumLostToVictim * MomentumToDamageConversionFactor) + InternalDamage) * DamageModifier * ExternalDamageModifier = (("$MomentumLostToVictim
-                    $" * "$Level.GetRepo().MomentumToDamageConversionFactor
-                    $") + "$Ammo.InternalDamage
-                    $") * "$DamageModifier
-                    $" * "$ExternalDamageModifier
-                    $" = "$Damage);
+            Ammo.BallisticsLog("  ... DamageModifier from the skeletal region was overriden for this arm hit, the OverrideArmDamageModifier is: "
+                $OverrideArmDamageModifier);
         }
         else
         {
-            if (PenetratesVictim)
-                log("[BALLISTICS]   ... Victim was penetrated:          Damage = MomentumLostToVictim * MomentumToDamageConversionFactor = "$MomentumLostToVictim
-                    $" * "$Level.GetRepo().MomentumToDamageConversionFactor
-                    $" = "$Damage);
-            else
-                log("[BALLISTICS]   ... Bullet was buried in Victim:    Damage = (MomentumLostToVictim * MomentumToDamageConversionFactor) + InternalDamage = ("$MomentumLostToVictim
-                    $" * "$Level.GetRepo().MomentumToDamageConversionFactor
-                    $") + "$Ammo.InternalDamage
-                    $" = "$Damage);
+            Ammo.BallisticsLog("  ... DamageModifier from the skeletal region is on the Range (Min="$SkeletalRegionInformation.DamageModifier.Min
+                $", Max="$SkeletalRegionInformation.DamageModifier.Max
+                $"), Selected "$DamageModifier
+                $".");
         }
+        Ammo.BallisticsLog("  ... ExternalDamageModifier = "$ExternalDamageModifier
+            $".");
+        Ammo.BallisticsLog("  ... AimErrorPenalty in on Range (Min="$SkeletalRegionInformation.AimErrorPenalty.Min
+            $", Max="$SkeletalRegionInformation.AimErrorPenalty.Max
+            $"), Selected "$LimbInjuryAimErrorPenalty
+            $".");
+
+        if (PenetratesVictim)
+            Ammo.BallisticsLog("  ... Victim was penetrated:          Damage = MomentumLostToVictim * MomentumToDamageConversionFactor * DamageModifier * ExternalDamageModifier = "$MomentumLostToVictim
+                $" * "$Level.GetRepo().MomentumToDamageConversionFactor
+                $" * "$DamageModifier
+                $" * "$ExternalDamageModifier
+                $" = "$Damage);
+        else
+            Ammo.BallisticsLog("  ... Bullet was buried in Victim:    Damage = ((MomentumLostToVictim * MomentumToDamageConversionFactor) + InternalDamage) * DamageModifier * ExternalDamageModifier = (("$MomentumLostToVictim
+                $" * "$Level.GetRepo().MomentumToDamageConversionFactor
+                $") + "$Ammo.InternalDamage
+                $") * "$DamageModifier
+                $" * "$ExternalDamageModifier
+                $" = "$Damage);
+    }
+    else
+    {
+        if (PenetratesVictim)
+            Ammo.BallisticsLog("  ... Victim was penetrated:          Damage = MomentumLostToVictim * MomentumToDamageConversionFactor = "$MomentumLostToVictim
+                $" * "$Level.GetRepo().MomentumToDamageConversionFactor
+                $" = "$Damage);
+        else
+            Ammo.BallisticsLog("  ... Bullet was buried in Victim:    Damage = (MomentumLostToVictim * MomentumToDamageConversionFactor) + InternalDamage = ("$MomentumLostToVictim
+                $" * "$Level.GetRepo().MomentumToDamageConversionFactor
+                $") + "$Ammo.InternalDamage
+                $" = "$Damage);
     }
 
     // If it's something with skeletal regions, do notification
@@ -684,10 +733,8 @@ simulated function bool HandleBallisticImpact(
 
     DealDamage(Victim, Damage, Pawn(Owner), HitLocation, MomentumVector, GetDamageType());
 
-    if (Level.AnalyzeBallistics)
-    {
-        log("[BALLISTICS]   ... Bullet will impart to victim the momentum it lost to the victim:  "$VSize(MomentumVector)$" in direction "$Normal(MomentumVector));
-    }
+    Ammo.BallisticsLog("  ... Bullet will impart to victim the momentum it lost to the victim:  "$VSize(MomentumVector)$" in direction "$Normal(MomentumVector));
+
     Victim.TakeHitImpulse(HitLocation, MomentumVector, GetDamageType());
 
     //the bullet has lost momentum to its victim
@@ -756,7 +803,7 @@ simulated function bool HandleProtectiveEquipmentBallisticImpact(
     local float DamageModifier, ExternalDamageModifier;
 
     //the bullet will penetrate the protection unles it loses all of its momentum to the protection
-    PenetratesProtection = (Protection.MomentumToPenetrate < Momentum);
+    PenetratesProtection = (Protection.GetMtP() < Momentum);
 
     //determine DamageModifierRange
     if (PenetratesProtection)
@@ -765,7 +812,7 @@ simulated function bool HandleProtectiveEquipmentBallisticImpact(
         DamageModifierRange = Protection.BlockedDamageFactor;
 
     //calculate damage imparted to victim
-    MomentumLostToProtection = FMin(Momentum, Protection.MomentumToPenetrate);
+    MomentumLostToProtection = FMin(Momentum, Protection.GetMtP());
     Damage = MomentumLostToProtection * Level.GetRepo().MomentumToDamageConversionFactor;
     DamageModifier = RandRange(DamageModifierRange.Min, DamageModifierRange.Max);
     Damage *= DamageModifier;
@@ -775,37 +822,38 @@ simulated function bool HandleProtectiveEquipmentBallisticImpact(
     Damage = int( float(Damage) * ExternalDamageModifier );
 
     //calculate momentum vector imparted to victim
-    MomentumVector = NormalizedBulletDirection * Protection.MomentumToPenetrate;
+    MomentumVector = NormalizedBulletDirection * Protection.GetMtP();
     if (PenetratesProtection)
         MomentumVector *= Level.getRepo().MomentumImpartedOnPenetrationFraction;
 
-    if (Level.AnalyzeBallistics)
-    {
-        log("[BALLISTICS]   ->  Remaining Momentum is "$Momentum$".");
-        log("[BALLISTICS]   ... Bullet hit "$Protection.class.name$" ProtectiveEquipment on Victim "$Victim.name);
-        log("[BALLISTICS]   ... Protection.MomentumToPenetrate is "$Protection.MomentumToPenetrate$".");
+    Ammo.BallisticsLog("  ->  Remaining Momentum is "$Momentum$".");
+    Ammo.BallisticsLog("  ... Bullet hit "$Protection.class.name$" ProtectiveEquipment on Victim "$Victim.name);
+    Ammo.BallisticsLog("  ... Protection.MomentumToPenetrate is "$Protection.GetMtP()$".");
 
-        if (PenetratesProtection)
-            log("[BALLISTICS]   ... The ProtectiveEquipment was penetrated.  Using PenetratedDamageFactor.");
-        else
-            log("[BALLISTICS]   ... Bullet was buried in the ProtectiveEquipment  Using BlockedDamageFactor.");
+    if (PenetratesProtection)
+        Ammo.BallisticsLog("  ... The ProtectiveEquipment was penetrated.  Using PenetratedDamageFactor.");
+    else
+        Ammo.BallisticsLog("  ... Bullet was buried in the ProtectiveEquipment  Using BlockedDamageFactor.");
 
-        log("[BALLISTICS]   ... DamageModifier is on the Range (Min="$DamageModifierRange.Min$", Max="$DamageModifierRange.Max$"), selected "$DamageModifier$".");
-        log("[BALLISTICS]   ... ExternalDamageModifier = "$ExternalDamageModifier$".");
+    Ammo.BallisticsLog("  ... DamageModifier is on the Range (Min="$DamageModifierRange.Min$", Max="$DamageModifierRange.Max$"), selected "$DamageModifier$".");
+    Ammo.BallisticsLog("  ... ExternalDamageModifier = "$ExternalDamageModifier$".");
 
-        log("[BALLISTICS]   ... Damage = MomentumLostToProtection * MomentumToDamageConversionFactor * DamageModifier * ExternalDamageModifier = "$MomentumLostToProtection
-            $" * "$Level.GetRepo().MomentumToDamageConversionFactor
-            $" * "$DamageModifier
-            $" * "$ExternalDamageModifier
-            $" = "$Damage);
-    }
+    Ammo.BallisticsLog("  ... Damage = MomentumLostToProtection * MomentumToDamageConversionFactor * DamageModifier * ExternalDamageModifier = "$MomentumLostToProtection
+        $" * "$Level.GetRepo().MomentumToDamageConversionFactor
+        $" * "$DamageModifier
+        $" * "$ExternalDamageModifier
+        $" = "$Damage);
 
     IHaveSkeletalRegions(Victim).OnSkeletalRegionHit(HitRegion, HitLocation, HitNormal, Damage, GetDamageType(), Owner);
 
     DealDamage(Victim, Damage, Pawn(Owner), HitLocation, MomentumVector, GetDamageType());
 
     //the bullet has lost momentum to its target
-    Momentum -= Protection.MomentumToPenetrate;
+    Momentum -= Protection.GetMtP();
+
+    if(Ammo.CanShredArmor()) {
+      Protection.OnProtectedRegionHit();
+    }
 
     return PenetratesProtection;
 }
@@ -848,7 +896,8 @@ function OnGivenToOwner()
         $") failed to spawn its Ammunition of class "$AmmoClass
         $".");
 
-    Ammo.Initialize(bHasAmmoBandolier);
+    Ammo.InitializeAmmo(DeathFired);
+    DeathFired = 0;
 }
 
 //for enemies, FiredWeapon ammunition type is selected randomly from the set of types of ammo
@@ -1495,6 +1544,13 @@ simulated function EquippedHook()
     // See if the pawn had the flashlight on at the time he changed
     // equipment. If so, turn the light on for the new equipment.
     UpdateFlashlightState();
+
+    UpdateAmmoDisplay();
+}
+
+simulated function UpdateAmmoDisplay()
+{
+  // This function has to be overrided..
 }
 
 simulated function UnEquippedHook()
@@ -1549,7 +1605,7 @@ simulated function float GetAimError()
 }
 
 //update flashlight and AimError.
-simulated function Tick(float dTime)
+simulated event Tick(float dTime)
 {
     Super.Tick(dTime);
 
@@ -1561,7 +1617,6 @@ simulated function Tick(float dTime)
     if (class'Pawn'.static.CheckDead(Pawn(Owner)))
     {
         //in this case, we might still be equipped, but we don't want to update stuff
-
         Disable('Tick');
         return;
     }
@@ -1591,13 +1646,8 @@ simulated function UpdateAimError(float dTime)
     local float AimErrorRecoveryRate;
     local float TargetAimError;
 
-//    if (PendingAimErrorPenalty > 0)
-//        log("[AIM] Applying PendingAimErrorPenalty="$PendingAimErrorPenalty);
-
     //target aim error is state-based error plus event-based penalties
     TargetAimError = GetBaseAimError() + PendingAimErrorPenalty;
-    //clear event-based penalties which are applied once
-    PendingAimErrorPenalty = 0;
 
     if (AimError > TargetAimError)
     {
@@ -1610,11 +1660,15 @@ simulated function UpdateAimError(float dTime)
         //recover accuracy over time
         AimError = FMax(TargetAimError, AimError - dTime * AimErrorRecoveryRate);
     }
-    else
+    else {
         //current aim error should be at least target aim error
         AimError = FMax(TargetAimError, AimError);
+    }
 
 //    log("[AIM] Updated AimError="$AimError);
+
+    //clear event-based penalties which are applied once
+    PendingAimErrorPenalty = 0;
 }
 
 

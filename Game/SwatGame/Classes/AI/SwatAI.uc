@@ -2035,6 +2035,10 @@ function FireMode GetDefaultAIFireModeForWeapon(FiredWeapon Weapon)
 {
 	assert(Weapon != None);
 
+	if (Weapon.HasFireMode(FireMode_Single) || Weapon.HasFireMode(FireMode_SingleTaser))
+	{
+		return FireMode_Single;
+	}
 	if (Weapon.HasFireMode(FireMode_Burst))
 	{
 		return FireMode_Burst;
@@ -2043,17 +2047,18 @@ function FireMode GetDefaultAIFireModeForWeapon(FiredWeapon Weapon)
 	{
 		return FireMode_Auto;
 	}
-	else if (Weapon.HasFireMode(FireMode_DoubleTaser))
-	{
-		return FireMode_DoubleTaser;
-	}
 	else
 	{
 		// sanity check!
-		assert(Weapon.HasFireMode(FireMode_Single) || Weapon.HasFireMode(FireMode_SingleTaser));
+		assert(Weapon.HasFireMode(FireMode_DoubleTaser));
 
-		return FireMode_Single;
+		return FireMode_DoubleTaser;
 	}
+}
+
+function float GetTimeToWaitBeforeFiring()
+{
+  return 0.0; // For most NPCs this is 0 - only implemented in SwatEnemy
 }
 
 // return weapon specific time values for this AI
@@ -2181,7 +2186,10 @@ simulated private function bool CanHitCurrentTarget()
 
 simulated function Died(Controller Killer, class<DamageType> damageType, vector HitLocation, vector HitMomentum)
 {
+  local CharacterSpeechManagerAction SpeechManagerAction;
 	log(Name $ " Died - IsIncapacitated: " $ IsIncapacitated() $ " ShouldBecomeIncapacitated: " $ ShouldBecomeIncapacitated());
+
+  SpeechManagerAction = GetSpeechManagerAction();
 
 	if (ShouldBecomeIncapacitated())
 	{
@@ -2189,7 +2197,7 @@ simulated function Died(Controller Killer, class<DamageType> damageType, vector 
 	}
 	else
 	{
-		if (! IsIncapacitated())
+		if (! IsIncapacitated() && SpeechManagerAction != None)
 			GetSpeechManagerAction().TriggerDiedSpeech();
 
 		// we are no longer incapacitated, we are dead!
@@ -2325,8 +2333,10 @@ native function CommanderAction GetCommanderAction();
 
 function CharacterSpeechManagerAction GetSpeechManagerAction()
 {
+  if(SpeechManager.achievingAction == None) {
+    return None;
+  }
 	assert(SpeechManager != None);
-	assert(SpeechManager.achievingAction != None);
 	assert(CharacterSpeechManagerAction(SpeechManager.achievingAction) != None);
 
 	return CharacterSpeechManagerAction(SpeechManager.achievingAction);

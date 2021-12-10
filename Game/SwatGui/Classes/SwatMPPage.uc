@@ -296,13 +296,24 @@ private function SetupPopup()
 
 function InternalOnActivate()
 {
-    SetFocusInstead(MyServerInfoBox);
+	SetFocusInstead(MyServerInfoBox);
 
     DisplayGameInfo();
 
     MyMPLoadoutPanel.LoadMultiPlayerLoadout();
 
     SetTimer( 1.0, true );
+	
+	if (SwatGUIController(Controller).coopcampaign)
+	{
+		MyServerSettingsButton.Hide();
+		MyServerSettingsButton.DisableComponent();
+	}
+	else 
+	{
+		MyServerSettingsButton.Show();
+		MyServerSettingsButton.EnableComponent();
+	}
 }
 
 function InternalOnDeActivate()
@@ -385,13 +396,17 @@ function CommonOnClick(GUIComponent Sender)
 	{
 		case MyStartButton:
             if(!bPressedReady) {
-              SwatGuiController(Controller).SetPlayerReady();
-              bPressedReady = true;
-              MyStartButton.SetCaption(UnreadyString);
+              if(MyMPLoadoutPanel.CheckWeightBulkValidity()) {
+                SwatGuiController(Controller).SetPlayerReady();
+                bPressedReady = true;
+                MyStartButton.SetCaption(UnreadyString);
+                MyLoadoutButton.DeActivate();
+              }
             } else {
               SwatGuiController(Controller).SetPlayerNotReady();
               bPressedReady = false;
               MyStartButton.SetCaption(ReadyString);
+              MyLoadoutButton.Activate();
             }
 	          ResumeGame();
             break;

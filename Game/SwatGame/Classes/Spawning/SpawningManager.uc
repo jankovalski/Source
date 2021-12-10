@@ -5,6 +5,7 @@ class SpawningManager extends Core.Object implements Engine.ISpawningManager
 
 import enum EStartPointDependent from Spawner;
 import enum EEntryType from SwatGame.SwatStartPointBase;
+import enum eDifficultyLevel from SwatGUIConfig;
 
 ////////////////////////////////////////////////////////////////////
 // NOTE: Dynamic class variables should be reset to their initial state
@@ -46,12 +47,21 @@ function array<int> DoSpawning(SwatGameInfo Game, optional bool bTesting)
     local SwatRepo Repo;
     local EEntryType StartPoint;
     local int HighPriority;
+    local eDifficultyLevel DifficultyLevel;
+    local bool ThisRosterNotAllowed;
 
     // DoSpawning() should only be called in standalone games.
     assert( Level.NetMode == NM_Standalone || Level.IsCOOPServer );
 
     //we only expect to do this once per run
     assert(!HasSpawned || bTesting);
+
+    // Determine the difficulty level
+    if(Level.IsCOOPServer) {
+      DifficultyLevel = Difficulty_Elite; // Gloves are off in co-op mode..!
+    } else {
+      DifficultyLevel = Repo.GuiConfig.CurrentDifficulty;
+    }
 
     //reference any custom scenario
     CustomScenario = SwatGameInfo(Level.Game).GetCustomScenario();
@@ -148,6 +158,18 @@ function array<int> DoSpawning(SwatGameInfo Game, optional bool bTesting)
                 $", it determined that the Roster's SpawnerGroup is the SpawnerGroup for the Mission Objective "$ObjectiveFromRoster
                 $", but the Roster's Count Min is zero.  If zero were to be selected, then the player wouldn't need to do anything to complete the Objective!");
 
+        // Disallow this roster if our difficulty is in the DisallowedDifficulties
+        for(j = 0; j < CurrentRoster.DisallowedDifficulties.Length; j++) {
+          if(CurrentRoster.DisallowedDifficulties[j] == DifficultyLevel) {
+            ThisRosterNotAllowed = true;
+            break;
+          }
+        }
+        if(ThisRosterNotAllowed) {
+          ThisRosterNotAllowed = false;
+          continue;
+        }
+
         if (Game.DebugSpawning)
         {
             if (ObjectiveFromRoster == None)
@@ -216,7 +238,10 @@ function array<int> DoSpawning(SwatGameInfo Game, optional bool bTesting)
         //select spawners - from the candidate spawners - to spawn this roster
         for (j=0; j<Count; ++j)
         {
-            assert(CandidateSpawners.length > 0);   //we should still have a candidate spawner left to spawn the archetype
+            if(CandidateSpawners.length <= 0) {
+              assertWithDescription(false, "Ran out of candidate spawners for Roster "$CurrentRoster.SpawnerGroup);
+              break;
+            }
 
             //find out if any of the candidate spawners have priority
             HighPriority = 0;

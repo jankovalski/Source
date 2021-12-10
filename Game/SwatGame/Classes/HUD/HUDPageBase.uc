@@ -19,6 +19,8 @@ var(HUD) EditInline GUIAmmoStatusBase                   AmmoStatus              
 var(HUD) EditInline GUIOverlay                          Overlay                     "An image that should be the size of the screen, and obstructs the view for sniper scope, gas mask, etc.";
 var(HUD) EditInline GUIProgressBar                      Progress                    "A multi-purpose progress bar.";
 var(HUD) EditInline GUIReticle                          Reticle                     "The reticle.";
+var(HUD) EditInline GUILabel                            WeightIndicator             "The text that shows the amount of weight that you are carrying.";
+var(HUD) EditInline GUILabel                            ArmorProtectionIndicator    "The text that shows your armor protection level.";
 
 //sp only hud components
 var(HUD) EditInline GUIDefaultCommandIndicator          DefaultCommand              "Text that displays the Command that will be given if the player presses the button to give the Default Command (right-mouse by default).";
@@ -89,6 +91,8 @@ function OnConstruct(GUIController MyController)
     PlayerTag = GUILabel(AddComponent("GUI.GUILabel", "HUDPage_playertag"));
     TrainingText = GUIScrollText(AddComponent("GUI.GUIScrollText", "HUDPage_TrainingText"));
     TrainingText.CharDelay=0.001;
+    WeightIndicator = GUIWeight(AddComponent("SwatGame.GUIWeight", "HUDPage_weight"));
+    ArmorProtectionIndicator = GUILabel(AddComponent("GUI.GUILabel", "HUDPage_ArmorProtection"));
 
 	for (i = 0; i < NVOIPSPEAKERS; i++)
 	{
@@ -338,6 +342,8 @@ function CloseGenericComponents()
 
     assert( FireMode != None );
     FireMode.Hide();
+    assert( WeightIndicator != None );
+    WeightIndicator.Hide();
     assert( DamageIndicator != None );
     DamageIndicator.Hide();
     assert( AmmoStatus != None );
@@ -350,6 +356,8 @@ function CloseGenericComponents()
     Progress.Reposition('down');
     assert( Reticle != None );
     Reticle.Hide();
+    assert(ArmorProtectionIndicator != None);
+    ArmorProtectionIndicator.Hide();
 }
 
 function CloseSPComponents()
@@ -384,10 +392,15 @@ function OpenGenericComponents()
     Feedback.RePosition('down', true); //ensure feedback always starts from down position
 
     assert( AmmoStatus != None );
-    //updated in UpdateFireMode, below
-
     assert( FireMode != None );
     UpdateFireMode();
+
+    assert(WeightIndicator != None);
+    UpdateWeight();
+
+    assert(ArmorProtectionIndicator != None);
+    ArmorProtectionIndicator.Show();
+    UpdateArmor();
 
     assert( DamageIndicator != None );
     DamageIndicator.Reset();
@@ -489,6 +502,46 @@ function GUIScrollText GetTrainingTextControl()
 simulated function UpdateProtectiveEquipmentOverlay()
 {
     Overlay.UpdateImage();
+    UpdateArmor();
+}
+
+simulated function UpdateWeight()
+{
+  local float Weight;
+  local GUIWeight WeightLabel;
+
+  if(PlayerOwner().Pawn != None) {
+    Weight = SwatPlayer(PlayerOwner().Pawn).GetTotalWeight();
+  }
+
+  WeightLabel = GUIWeight(WeightIndicator);
+
+  WeightLabel.Show();
+  WeightLabel.SetWeightText(Weight);
+}
+
+simulated function UpdateArmor()
+{
+  local ProtectiveEquipment Protection;
+  local float ProtectionPercent;
+
+  if(PlayerOwner().Pawn != None) {
+    Protection = PlayerOwner().Pawn.GetSkeletalRegionProtection(REGION_Torso);
+  }
+
+  if(Protection == None) {
+    ArmorProtectionIndicator.Hide();
+    return;
+  }
+
+  if(!Protection.IsArmorShreddable()) {
+    ArmorProtectionIndicator.Hide();
+    return;
+  }
+
+  ProtectionPercent = Protection.GetArmorHealthPercent();
+  ProtectionPercent *= 100.0;
+  ArmorProtectionIndicator.SetCaption(""$ProtectionPercent$"%");
 }
 
 simulated function UpdateFireMode()
@@ -546,6 +599,7 @@ simulated function UpdateFireMode()
 function SkeletalRegionHit(ESkeletalRegion RegionHit, int damage)
 {
     DamageIndicator.SkeletalRegionHit(RegionHit, damage);
+    UpdateArmor();
 }
 
 function SetCrouched( bool bCrouching )
